@@ -7,7 +7,7 @@ from google.oauth2 import service_account
 
 import json
 #conectar con google 
-key_dict = json.loads(st.secrets['textKey'])
+key_dict = json.loads(st.secrets['textkey'])
 creds = service_account.Credentials.from_service_account_info(key_dict)
 
 #conectarme con firebase
