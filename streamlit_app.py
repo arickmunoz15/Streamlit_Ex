@@ -75,12 +75,12 @@ sb.markdown('____')
 #ingresar nuevo registro
 sb.header('Enter the new films')
 
-iname = sb.text_input('Name')
-icom = sb.text_input('Company')
-idir = sb.text_input('Director')
-igen = sb.text_input('Genre')
+iname = st.text_input('Name')
+icom = st.text_input('Company')
+idir = st.text_input('Director')
+igen = st.text_input('Genre')
 
-submit = sb.button("Create new film")
+submit = st.button("Create new film")
 
 if iname and icom and idir and igen and submit:
   doc_ref = db.collection("movies").document(iname)
