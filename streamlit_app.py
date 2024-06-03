@@ -11,7 +11,8 @@ key_dict = json.loads(st.secrets['textkey'])
 creds = service_account.Credentials.from_service_account_info(key_dict)
 
 #conectarme con firebase
-db = firestore.Client.from_service_account_json("keys.json")
+#db = firestore.Client.from_service_account_json("keys.json")
+db = firestore.Client(credentials=creds, project=creds.project_id)
 sbMov = db.collection('movies')
 
 sb = st.sidebar
