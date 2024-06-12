@@ -1,96 +1,100 @@
-#/content/Streamlit_ex/streamlit_app.py
 import streamlit as st
 import pandas as pd
 from google.cloud import firestore
 from google.oauth2 import service_account
-
-
 import json
-#conectar con google
-key_dict = json.loads(st.secrets['textkey'])
-creds = service_account.Credentials.from_service_account_info(key_dict)
 
-#conectarme con firebase
-#db = firestore.Client.from_service_account_json("keys.json")
-db = firestore.Client(credentials=creds, project=creds.project_id)
-sbMov = db.collection('movies')
+# Connect to Google Cloud using credentials from Streamlit secrets
+try:
+    key_dict = json.loads(st.secrets['textkey'])
+    creds = service_account.Credentials.from_service_account_info(key_dict)
+    db = firestore.Client(credentials=creds, project=creds.project_id)
+    st.write("Successfully connected to Firestore.")
+except Exception as e:
+    st.error(f"Error connecting to Firestore: {e}")
+    st.stop()
 
+# Sidebar for user inputs
 sb = st.sidebar
 
 st.title('Films app')
-#pasar los registros de firebase a un df
-movies_ref = list(db.collection(u'movies').stream())
-movies_dict = list(map(lambda x: x.to_dict(), movies_ref))
-mov_df = pd.DataFrame(movies_dict)
-##st.dataframe(mov_df)
 
-#read and cache the df
+# Fetch Firestore data and convert to DataFrame with detailed error handling
+try:
+    movies_ref = db.collection(u'movies').stream()
+    movies_dict = list(map(lambda x: x.to_dict(), movies_ref))
+    mov_df = pd.DataFrame(movies_dict)
+    st.write("Successfully fetched data from Firestore.")
+except Exception as e:
+    st.error(f"Error fetching data from Firestore: {e}")
+    st.stop()
+
+# Cache data loading function
 @st.cache
 def load_data(nrows):
-  data = mov_df[:nrows]
-  return data
+    return mov_df[:nrows]
 
-#Checkbox + header que permita ver todos los films
+# Display the dataset
 st.header('Dataset')
 agree = sb.checkbox('Show all rows of dataset?')
 if agree:
-  data_lt = st.text('Loading data...')
-  data = load_data(len(mov_df))
-  data_lt.text('Done (using st.cache)')
-  st.dataframe(data)
-else:
-  nro = sb.text_input('How many lines do we load?')
-  if (nro):
-    data = load_data(nro)
+    data_lt = st.text('Loading data...')
+    data = load_data(len(mov_df))
+    data_lt.text('Done (using st.cache)')
     st.dataframe(data)
+else:
+    nro = sb.text_input('How many lines do we load?', '10')
+    if nro.isdigit():
+        data = load_data(int(nro))
+        st.dataframe(data)
+    else:
+        st.error("Please enter a valid number of rows.")
 
-#Busqueda + boton, filmes por titulo, contains. upper, lower
+# Cache function for loading data by title or director
 @st.cache
-def load_data_bytitle(ttl, typee= True):
-  if typee:
-    dataf = mov_df[mov_df['name'].str.contains(ttl, case=False)]
-  else:
-    dataf = mov_df[mov_df['director'].str.contains(ttl)]
+def load_data_bytitle(ttl, typee=True):
+    if typee:
+        dataf = mov_df[mov_df['name'].str.contains(ttl, case=False)]
+    else:
+        dataf = mov_df[mov_df['director'].str.contains(ttl, case=False)]
+    count_row = dataf.shape[0]
+    st.write(f'Total films that match: {count_row}')
+    return dataf
 
-  count_row = dataf.shape[0]
-  st.write(f'Total films that match: {count_row}')
-  return dataf
-
+# Search by film title
 fname = sb.text_input('Name of the film to search:')
-if (fname):
-  dfi = load_data_bytitle(fname)
-  st.dataframe(dfi)
+if fname:
+    dfi = load_data_bytitle(fname)
+    st.dataframe(dfi)
 
-#Selectbox + boton (Seleccionar director), filtrar los films hechos por el director
+# Filter by director
 seldir = sb.selectbox('Select Director', mov_df['director'].unique())
-btnfltr = sb.button('Filter by dir')
+btnfltr = sb.button('Filter by director')
+if btnfltr:
+    dfi = load_data_bytitle(seldir, typee=False)
+    st.dataframe(dfi)
 
-if (btnfltr):
-  dfi = load_data_bytitle(seldir, typee=False)
-  st.dataframe(dfi)
-
-#sep
+# Divider
 sb.markdown('____')
 
-#ingresar nuevo registro
-sb.header('Enter the new films')
-
+# Input new film details
+sb.header('Enter the new film')
 iname = sb.text_input('Name')
 icom = sb.text_input('Company')
 idir = sb.text_input('Director')
 igen = sb.text_input('Genre')
-
 submit = sb.button("Create new film")
 
+# Create new film entry in Firestore with detailed error handling
 if iname and icom and idir and igen and submit:
-  doc_ref = db.collection("movies").document(iname)
-  doc_ref.set({
-      'company':icom,
-      'director':idir,
-      'genre':igen,
-      'name':iname
-  })
-  #company	director	genre	name
-  sb.sidebar.write("succesfully enter new oscar movie")
-
-
+    try:
+        doc_ref = db.collection("movies").document(iname)
+        doc_ref.set({
+            'company': icom,
+            'director': idir,
+            'genre': igen,
+            'name': iname
+        })
+        sb.write("Successfully entered new film.")
+    except Exception as e:
+        st.error(f"Error adding new film to Firestore: {e}")
