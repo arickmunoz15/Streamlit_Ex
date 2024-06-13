@@ -85,6 +85,11 @@ idir = sb.text_input('Director')
 igen = sb.text_input('Genre')
 submit = sb.button("Create new film")
 
+st.write(f"Name: {iname}")
+st.write(f"Company: {icom}")
+st.write(f"Director: {idir}")
+st.write(f"Genre: {igen}")
+
 # Create new film entry in Firestore with detailed error handling
 if iname and icom and idir and igen and submit:
     try:
